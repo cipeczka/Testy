@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed IT Workshop - Jan Batycki</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #1a1a1a; }
+        #scene-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        canvas { display: block; }
+        #instructions {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #d1d5db; 
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 10;
+            text-align: center;
+        }
+    </style>
+    <script>
+        // --- Configuration & Constants ---
+        const SCENE_COLORS = {
+            background: 0x1a1a1a,       // Dark subtle background
+            wood: 0x8b5a2b,             // Wood-like desk/shelf color
+            metal: 0x4a4a4a,            // Dark gray metal for computer case, tools
+            screenOff: 0x0a0a0a,        // Dark screen
+            screenOn: 0x00ffcc,         // Cyan glowing screen content
+            toolHandles: 0xcc0000,      // Red tool handles
+            lightGray: 0xcccccc,        // Light gray for peripherals
+            textGlow: 0x00ffff,         // Cyan for text glow
+            workSurface: 0x336633,      // Dark green for the work mat
+            cable: 0x333333,            // Dark gray for cables
+            tape: 0xffa500,             // Orange for tape rolls
+            box: 0x664422,              // Cardboard box color
+            blueTool: 0x0000ff,         // Specific blue tool
+            blackPlastic: 0x222222      // Black plastic elements like the phone
+        };
+
+        let scene, camera, renderer, controls;
+        const RENDER_WIDTH = window.innerWidth;
+        const RENDER_HEIGHT = window.innerHeight;
+
+        // --- SCENE SETUP ---
+        function init() {
+            // 1. Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(SCENE_COLORS.background);
+            scene.fog = new THREE.FogExp2(SCENE_COLORS.background, 0.025);
+
+            // 2. Camera
+            camera = new THREE.PerspectiveCamera(60, RENDER_WIDTH / RENDER_HEIGHT, 0.1, 1000);
+            camera.position.set(-8, 7, 12); 
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+            document.getElementById('scene-container').appendChild(renderer.domElement);
+
+            // 4. Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 3.5, 0); 
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 30;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1; 
+
+            // 5. Lighting
+            addLights();
+            
+            // 6. Geometry
+            createWorkshopStructure();
+            createComputerCase();
+            createLaptop();
+            createExternalMonitor();
+            createPeripheralsAndTools();
+            createWallDetails();
+            createFloorObjects();
+            addContactInfo();
+
+            // 7. Event Listener
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function addLights() {
+            const ambient = new THREE.AmbientLight(0xffffff, 0.3); 
+            scene.add(ambient);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+            directionalLight.position.set(10, 15, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.1;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -20;
+            directionalLight.shadow.camera.right = 20;
+            directionalLight.shadow.camera.top = 20;
+            directionalLight.shadow.camera.bottom = -20;
+            scene.add(directionalLight);
+
+            const screenLight = new THREE.PointLight(SCENE_COLORS.screenOn, 1.5, 10);
+            screenLight.position.set(3, 4, 0); 
+            scene.add(screenLight);
+        }
+
+        // --- SCENE ELEMENTS ---
+
+        function createWorkshopStructure() {
+            const deskHeight = 3.5;
+            const deskWidth = 10;
+            const deskDepth = 5;
+
+            // Desk Surface
+            const deskGeometry = new THREE.BoxGeometry(deskWidth, 0.2, deskDepth);
+            const deskMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.wood, shininess: 30 });
+            const desk = new THREE.Mesh(deskGeometry, deskMaterial);
+            desk.position.set(0, deskHeight, 0);
+            desk.receiveShadow = true;
+            desk.castShadow = true;
+            scene.add(desk);
+
+            // Legs
+            const legGeometry = new THREE.BoxGeometry(0.5, deskHeight, 0.5);
+            const legMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.wood, shininess: 10 });
+            
+            const leg1 = new THREE.Mesh(legGeometry, legMaterial);
+            leg1.position.set(-deskWidth / 2 + 0.25, deskHeight / 2, -deskDepth / 2 + 0.25);
+            scene.add(leg1);
+            
+            const leg2 = new THREE.Mesh(legGeometry, legMaterial);
+            leg2.position.set(deskWidth / 2 - 0.25, deskHeight / 2, -deskDepth / 2 + 0.25);
+            scene.add(leg2);
+
+            // Desk Return (Left)
+            const returnWidth = 4;
+            const returnDepth = 3;
+            const returnGeometry = new THREE.BoxGeometry(returnWidth, 0.2, returnDepth);
+            const deskReturn = new THREE.Mesh(returnGeometry, deskMaterial);
+            deskReturn.position.set(-deskWidth / 2 + returnWidth / 2, deskHeight, -deskDepth / 2 - returnDepth / 2 + 0.2);
+            deskReturn.rotation.y = Math.PI / 2; 
+            deskReturn.receiveShadow = true;
+            deskReturn.castShadow = true;
+            scene.add(deskReturn);
+
+            // Work Mat
+            const matGeometry = new THREE.BoxGeometry(returnWidth * 0.9, 0.05, returnDepth * 0.9);
+            const matMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.workSurface, shininess: 50 });
+            const mat = new THREE.Mesh(matGeometry, matMaterial);
+            mat.position.set(deskReturn.position.x, deskHeight + 0.1, deskReturn.position.z);
+            mat.receiveShadow = true;
+            mat.castShadow = true;
+            scene.add(mat);
+
+            // Walls
+            const backWallGeometry = new THREE.BoxGeometry(0.2, 8, deskDepth * 2);
+            const backWallMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.wood, shininess: 20 });
+            const backWall = new THREE.Mesh(backWallGeometry, backWallMaterial);
+            backWall.position.set(-deskWidth / 2 - 0.1, 4, 0); 
+            backWall.rotation.y = Math.PI / 2; 
+            backWall.receiveShadow = true;
+            backWall.castShadow = true;
+            scene.add(backWall);
+
+            const rightWallGeometry = new THREE.BoxGeometry(deskWidth / 2, 8, 0.2);
+            const rightWall = new THREE.Mesh(rightWallGeometry, backWallMaterial);
+            rightWall.position.set(deskWidth / 4, 4, deskDepth / 2 - 0.1); 
+            rightWall.receiveShadow = true;
+            rightWall.castShadow = true;
+            scene.add(rightWall);
+
+            // Shelves
+            const shelfGeometry = new THREE.BoxGeometry(deskWidth / 2, 0.2, deskDepth * 0.8);
+            const shelfMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.wood, shininess: 20 });
+            
+            const shelf1 = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf1.position.set(deskWidth / 4, 6, deskDepth / 2 - 0.5);
+            shelf1.receiveShadow = true;
+            shelf1.castShadow = true;
+            scene.add(shelf1);
+
+            const shelf2 = new THREE.Mesh(shelfGeometry, shelfMaterial);
+            shelf2.position.set(deskWidth / 4, 7.5, deskDepth / 2 - 0.5);
+            shelf2.receiveShadow = true;
+            shelf2.castShadow = true;
+            scene.add(shelf2);
+
+            // Floor
+            const floorGeometry = new THREE.PlaneGeometry(deskWidth * 2, deskDepth * 2);
+            const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x333333, shininess: 10 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+
+        function createComputerCase() {
+            const caseWidth = 2;
+            const caseHeight = 2.5;
+            const caseDepth = 3;
+
+            const caseGeometry = new THREE.BoxGeometry(caseWidth, caseHeight, caseDepth);
+            const caseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal, shininess: 50 });
+            const computerCase = new THREE.Mesh(caseGeometry, caseMaterial);
+            computerCase.position.set(-4.5, 3.5 + caseHeight / 2, -1.8); 
+            computerCase.castShadow = true;
+            computerCase.receiveShadow = true;
+            scene.add(computerCase);
+
+            // Details
+            const buttonGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 16);
+            const buttonMaterial = new THREE.MeshBasicMaterial({ color: 0x00cc00 });
+            const powerButton = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            powerButton.rotation.x = Math.PI / 2;
+            powerButton.position.set(computerCase.position.x - 0.6, computerCase.position.y + 0.8, computerCase.position.z + caseDepth / 2 + 0.025);
+            scene.add(powerButton);
+
+            const ventGeometry = new THREE.BoxGeometry(caseWidth * 0.8, 0.1, 0.05);
+            const ventMaterial = new THREE.MeshBasicMaterial({ color: 0x222222 });
+            for (let i = 0; i < 3; i++) {
+                const vent = new THREE.Mesh(ventGeometry, ventMaterial);
+                vent.position.set(computerCase.position.x, computerCase.position.y - 0.5 + i * 0.2, computerCase.position.z + caseDepth / 2 + 0.025);
+                scene.add(vent);
+            }
+        }
+
+        function createLaptop() {
+            const laptopWidth = 3;
+            const laptopDepth = 2;
+            const laptopThickness = 0.15;
+            const screenRatio = 16 / 9;
+
+            const baseGeometry = new THREE.BoxGeometry(laptopWidth, laptopThickness, laptopDepth);
+            const baseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal, shininess: 50 });
+            const laptopBase = new THREE.Mesh(baseGeometry, baseMaterial);
+            laptopBase.position.set(1, 3.5 + laptopThickness / 2, 0.8);
+            laptopBase.castShadow = true;
+            laptopBase.receiveShadow = true;
+            scene.add(laptopBase);
+
+            const screenHeight = laptopDepth * 0.8;
+            const screenWidth = screenHeight * screenRatio;
+            const screenGeometry = new THREE.BoxGeometry(screenWidth, screenHeight, laptopThickness * 0.5);
+            const laptopScreenFrame = new THREE.Mesh(screenGeometry, baseMaterial);
+            laptopScreenFrame.position.set(
+                laptopBase.position.x, 
+                laptopBase.position.y + screenHeight / 2 + laptopThickness * 0.5, 
+                laptopBase.position.z - laptopDepth / 2 + laptopThickness * 0.5
+            );
+            laptopScreenFrame.rotation.x = -Math.PI / 4; 
+            laptopScreenFrame.castShadow = true;
+            laptopScreenFrame.receiveShadow = true;
+            scene.add(laptopScreenFrame);
+
+            const innerScreenGeometry = new THREE.PlaneGeometry(screenWidth * 0.9, screenHeight * 0.9);
+            const innerScreenMaterial = new THREE.MeshBasicMaterial({ color: SCENE_COLORS.screenOn, side: THREE.DoubleSide });
+            const innerScreen = new THREE.Mesh(innerScreenGeometry, innerScreenMaterial);
+            innerScreen.position.set(
+                laptopScreenFrame.position.x, 
+                laptopScreenFrame.position.y, 
+                laptopScreenFrame.position.z + laptopThickness * 0.3
+            );
+            innerScreen.rotation.copy(laptopScreenFrame.rotation);
+            scene.add(innerScreen);
+        }
+
+        function createExternalMonitor() {
+            const monitorWidth = 4;
+            const monitorHeight = monitorWidth / (16/9);
+            const monitorThickness = 0.2;
+
+            const screenGeometry = new THREE.BoxGeometry(monitorWidth, monitorHeight, monitorThickness);
+            const screenMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal, shininess: 50 });
+            const monitor = new THREE.Mesh(screenGeometry, screenMaterial);
+            monitor.position.set(3.5, 3.5 + monitorHeight / 2 + 1, 0.8); 
+            monitor.castShadow = true;
+            monitor.receiveShadow = true;
+            scene.add(monitor);
+
+            const innerScreenGeometry = new THREE.PlaneGeometry(monitorWidth * 0.9, monitorHeight * 0.9);
+            const innerScreenMaterial = new THREE.MeshBasicMaterial({ color: SCENE_COLORS.screenOn, side: THREE.DoubleSide });
+            const innerMonitorScreen = new THREE.Mesh(innerScreenGeometry, innerScreenMaterial);
+            innerMonitorScreen.position.set(monitor.position.x, monitor.position.y, monitor.position.z + monitorThickness / 2 + 0.01);
+            scene.add(innerMonitorScreen);
+
+            const standBaseGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.2, 16);
+            const standBaseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal, shininess: 30 });
+            const standBase = new THREE.Mesh(standBaseGeometry, standBaseMaterial);
+            standBase.position.set(monitor.position.x, 3.5 + 0.1, monitor.position.z);
+            scene.add(standBase);
+
+            const standPostGeometry = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+            const standPost = new THREE.Mesh(standPostGeometry, standBaseMaterial);
+            standPost.position.set(monitor.position.x, 3.5 + 0.2 + 0.6, monitor.position.z);
+            scene.add(standPost);
+        }
+
+        function createPeripheralsAndTools() {
+            // Phone
+            const phoneBaseGeometry = new THREE.BoxGeometry(0.8, 0.3, 1);
+            const phoneBaseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.blackPlastic });
+            const phoneBase = new THREE.Mesh(phoneBaseGeometry, phoneBaseMaterial);
+            phoneBase.position.set(3, 3.5 + 0.15, 2.8);
+            phoneBase.castShadow = true;
+            scene.add(phoneBase);
+
+            const phoneHandsetGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.5, 16);
+            const phoneHandset = new THREE.Mesh(phoneHandsetGeometry, phoneBaseMaterial);
+            phoneHandset.rotation.z = Math.PI / 4;
+            phoneHandset.position.set(phoneBase.position.x - 0.3, phoneBase.position.y + 0.3, phoneBase.position.z - 0.3);
+            phoneHandset.castShadow = true;
+            scene.add(phoneHandset);
+
+            // CD Stack
+            const discGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.05, 32);
+            const discMaterial = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 80 });
+            for (let i = 0; i < 5; i++) {
+                const disc = new THREE.Mesh(discGeometry, discMaterial);
+                disc.position.set(4.5, 3.5 + 0.2 + i * 0.06, 2.5);
+                disc.castShadow = true;
+                scene.add(disc);
+            }
+
+            // Soldering Station
+            const solderBaseGeometry = new THREE.BoxGeometry(1.2, 0.4, 0.8);
+            const solderBaseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal });
+            const solderBase = new THREE.Mesh(solderBaseGeometry, solderBaseMaterial);
+            solderBase.position.set(-2, 3.5 + 0.2, -1.8);
+            solderBase.castShadow = true;
+            scene.add(solderBase);
+
+            const solderHolderGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8);
+            const solderHolderMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.lightGray });
+            const solderHolder = new THREE.Mesh(solderHolderGeometry, solderHolderMaterial);
+            solderHolder.rotation.z = Math.PI / 2 + Math.PI / 8; 
+            solderHolder.position.set(solderBase.position.x + 0.2, solderBase.position.y + 0.3, solderBase.position.z);
+            solderHolder.castShadow = true;
+            scene.add(solderHolder);
+
+            // Cables
+            const cablePoints = [
+                new THREE.Vector3(1, 3.5, 0.8), 
+                new THREE.Vector3(1.5, 3.3, 0.5),
+                new THREE.Vector3(2.5, 3.2, 0.6),
+                new THREE.Vector3(3.5, 3.3, 0.8) 
+            ];
+            const cableCurve = new THREE.CatmullRomCurve3(cablePoints);
+            const cableGeometry = new THREE.TubeGeometry(cableCurve, 20, 0.05, 8, false);
+            const cableMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.cable });
+            const cable = new THREE.Mesh(cableGeometry, cableMaterial);
+            cable.castShadow = true;
+            scene.add(cable);
+        }
+
+        function createWallDetails() {
+            // Tool Rack
+            const rackBarGeometry = new THREE.CylinderGeometry(0.08, 0.08, 4, 16);
+            const rackBarMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal });
+            const rackBar = new THREE.Mesh(rackBarGeometry, rackBarMaterial);
+            rackBar.rotation.z = Math.PI / 2;
+            rackBar.position.set(-4.9, 5, -2.2);
+            rackBar.castShadow = true;
+            scene.add(rackBar);
+
+            // Tools
+            const toolHandleGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.8, 8);
+            const toolHandleMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.toolHandles });
+            const toolTipGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 4);
+            const toolTipMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal });
+
+            for (let i = 0; i < 7; i++) { 
+                const handle = new THREE.Mesh(toolHandleGeometry, toolHandleMaterial);
+                const tip = new THREE.Mesh(toolTipGeometry, toolTipMaterial);
+                handle.position.set(-4.8, 5 + i * 0.4 - 1.2, -2.2);
+                tip.position.set(handle.position.x + 0.6, handle.position.y, handle.position.z);
+                handle.castShadow = true; tip.castShadow = true;
+                scene.add(handle);
+                scene.add(tip);
+            }
+
+            // Tape Rolls
+            const tapeRollGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 32);
+            const coreGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.11, 32);
+            const coreMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.lightGray });
+
+            for (let i = 0; i < 5; i++) {
+                const tapeMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.tape }); 
+                const roll = new THREE.Mesh(tapeRollGeometry, tapeMaterial);
+                const core = new THREE.Mesh(coreGeometry, coreMaterial);
+                
+                roll.position.set(-4.5 + i * 0.7, 7.6, -2);
+                core.position.copy(roll.position);
+                core.rotation.z = Math.PI / 2;
+                roll.rotation.z = Math.PI / 2;
+
+                roll.castShadow = true; core.castShadow = true;
+                scene.add(roll);
+                scene.add(core);
+            }
+
+            // Radio
+            const radioBodyGeometry = new THREE.BoxGeometry(1.5, 0.8, 0.5);
+            const radioBodyMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal });
+            const antennaGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8);
+            const antennaMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.lightGray });
+
+            const radio1 = new THREE.Mesh(radioBodyGeometry, radioBodyMaterial);
+            radio1.position.set(-2, 7.8, -2.5);
+            const ant1 = new THREE.Mesh(antennaGeometry, antennaMaterial);
+            ant1.position.set(radio1.position.x + 0.7, radio1.position.y + 0.4 + 0.4, radio1.position.z);
+            radio1.castShadow = true; ant1.castShadow = true;
+            scene.add(radio1);
+            scene.add(ant1);
+        }
+
+        function createFloorObjects() {
+            const boxGeometry = new THREE.BoxGeometry(2, 1.5, 2);
+            const boxMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.box });
+            const cardboardBox = new THREE.Mesh(boxGeometry, boxMaterial);
+            cardboardBox.position.set(-4, 0.75, 1);
+            cardboardBox.castShadow = true;
+            scene.add(cardboardBox);
+
+            const floorCaseGeometry = new THREE.BoxGeometry(1.5, 2, 2.5);
+            const floorCaseMaterial = new THREE.MeshPhongMaterial({ color: SCENE_COLORS.metal });
+            const floorCase = new THREE.Mesh(floorCaseGeometry, floorCaseMaterial);
+            floorCase.position.set(-3.5, 1, 3.5);
+            floorCase.castShadow = true;
+            scene.add(floorCase);
+        }
+
+        function addContactInfo() {
+            function createTextSprite(message, color, fontSize = 60) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = `Bold ${fontSize}px Arial`;
+                const metrics = context.measureText(message);
+                const textWidth = metrics.width;
+                const textHeight = fontSize * 1.4;
+
+                canvas.width = textWidth + 40; 
+                canvas.height = textHeight + 40;
+
+                context.font = `Bold ${fontSize}px Arial`;
+                context.fillStyle = color;
+                context.shadowColor = color;
+                context.shadowBlur = 15;
+                context.fillText(message, 20, fontSize + 10);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(textWidth / 80, textHeight / 80, 1); 
+                return sprite;
+            }
+
+            const nameSprite = createTextSprite("Jan Batycki", `#${SCENE_COLORS.textGlow.toString(16).padStart(6, '0')}`);
+            nameSprite.position.set(1.0, 7.8, -1.8); 
+            nameSprite.name = "nameSprite";
+            scene.add(nameSprite);
+
+            const phoneSprite = createTextSprite("507117010", `#${SCENE_COLORS.textGlow.toString(16).padStart(6, '0')}`);
+            phoneSprite.position.set(1.0, 7.3, -1.8); 
+            phoneSprite.name = "phoneSprite";
+            scene.add(phoneSprite);
+        }
+
+        function animateContactInfo(time) {
+            const nameSprite = scene.getObjectByName("nameSprite");
+            const phoneSprite = scene.getObjectByName("phoneSprite");
+
+            if (nameSprite) {
+                nameSprite.position.y = 7.8 + Math.sin(time * 0.001) * 0.05; 
+                nameSprite.material.opacity = 0.9 + Math.sin(time * 0.002) * 0.1; 
+            }
+            if (phoneSprite) {
+                phoneSprite.position.y = 7.3 + Math.cos(time * 0.001) * 0.05; 
+                phoneSprite.material.opacity = 0.9 + Math.cos(time * 0.002) * 0.1; 
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            animateContactInfo(time);
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            if (document.getElementById('scene-container')) {
+                init();
+                animate();
+            } else {
+                console.error("The required scene container element was not found.");
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900">
+    <div id="instructions" class="pointer-events-none">
+        Drag/Swipe to look around the detailed workshop.
+    </div>
+    <div id="scene-container"></div>
+</body>
+</html>
+
+
